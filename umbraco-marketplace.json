@@ -1,17 +1,24 @@
 {
   "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "Growcreate Library Migrator",
+  "Category": "Developer Tools",
+  "Description": "A backoffice package for Umbraco 18+ that migrates content saved as Element Types to the new Library (reusable elements) feature introduced in Umbraco 18.",
   "AuthorDetails": {
     "Name": "Growcreate",
-    "Description": "Growcreate is a digital agency building websites and packages on Umbraco.",
+    "Description": "We started small and scrappy back in 2012, but now we’re a team that delivers scalable solutions to businesses worldwide. And we’re just getting started.",
     "Url": "https://growcreate.co.uk",
     "ImageUrl": "https://github.com/growcreate.png",
-    "SyncContributorsFromRepository": true
+    "Contributors": [
+      {
+        "Name": "Mike Isaacs",
+        "Url": "https://www.linkedin.com/in/mike-isaacs-44366092/"
+      }
+    ]
   },
-  "Category": "Developer Tools",
   "DocumentationUrl": "https://github.com/growcreate/Growcreate.LibraryMigrator#readme",
   "IssueTrackerUrl": "https://github.com/growcreate/Growcreate.LibraryMigrator/issues",
   "LicenseTypes": [ "Free" ],
   "PackageType": "Package",
   "VersionDependencyMode": "SemVer",
-  "Tags": [ "migration", "library", "elements", "block-editor" ]
+  "Tags": [ "umbraco", "migration", "library", "elements", "developer", "tools", "backoffice" ]
 }
