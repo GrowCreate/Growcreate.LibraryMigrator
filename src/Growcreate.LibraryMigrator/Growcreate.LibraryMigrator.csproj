@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Growcreate.LibraryMigrator</RootNamespace>
+    <AssemblyName>Growcreate.LibraryMigrator</AssemblyName>
+    <!-- Static web assets served at /App_Plugins/... not /_content/{id}/App_Plugins/... -->
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>Growcreate.LibraryMigrator</PackageId>
+    <Version>1.0.0</Version>
+    <Title>Library Migrator for Umbraco</Title>
+    <Authors>Growcreate</Authors>
+    <Company>Growcreate</Company>
+    <Product>Growcreate Library Migrator</Product>
+    <Description>Migrates Umbraco content stored as Element Types to the Umbraco 18 Library (reusable elements) feature. Adds a backoffice workspace tab with preview, migration, snapshot/restore, and per-document status checks.</Description>
+    <Copyright>Copyright © 2026 Growcreate</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/growcreate/Growcreate.LibraryMigrator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/growcreate/Growcreate.LibraryMigrator</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>See https://github.com/growcreate/Growcreate.LibraryMigrator/releases</PackageReleaseNotes>
+    <!-- 'umbraco-marketplace' is the tag the Umbraco Marketplace scans NuGet for -->
+    <PackageTags>umbraco;umbraco-marketplace;umbraco-package;migration;library;elements;block-editor;backoffice</PackageTags>
+  </PropertyGroup>
+
+  <!-- Reproducible builds, symbols and Source Link (Source Link ships in the .NET SDK) -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms" />
+  </ItemGroup>
+
+  <!-- Files packed into the NuGet package root -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="Assets\logo.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Keep dev-only TypeScript sources and generated JSON schema files out of the package.
+       The compiled client lives under wwwroot and is packed as static web assets. -->
+  <ItemGroup>
+    <Content Update="Client\**" Pack="false" />
+    <Content Update="appsettings-schema.json" Pack="false" />
+    <Content Update="appsettings-schema.*.json" Pack="false" />
+    <Content Update="umbraco-package-schema.json" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\App_Plugins\Growcreate.LibraryMigrator\" />
+  </ItemGroup>
+
+</Project>

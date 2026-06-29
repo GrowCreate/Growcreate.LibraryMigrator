@@ -1,0 +1,17 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "AuthorDetails": {
+    "Name": "Growcreate",
+    "Description": "Growcreate is a digital agency building websites and packages on Umbraco.",
+    "Url": "https://growcreate.co.uk",
+    "ImageUrl": "https://github.com/growcreate.png",
+    "SyncContributorsFromRepository": true
+  },
+  "Category": "Developer Tools",
+  "DocumentationUrl": "https://github.com/growcreate/Growcreate.LibraryMigrator#readme",
+  "IssueTrackerUrl": "https://github.com/growcreate/Growcreate.LibraryMigrator/issues",
+  "LicenseTypes": [ "Free" ],
+  "PackageType": "Package",
+  "VersionDependencyMode": "SemVer",
+  "Tags": [ "migration", "library", "elements", "block-editor" ]
+}

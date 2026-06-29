@@ -1,0 +1,14 @@
+{
+  "name": "element-migrator-client",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
+  "devDependencies": {
+    "@umbraco-cms/backoffice": "18.0.0-rc2",
+    "typescript": "~5.5.3",
+    "vite": "~6.3.0"
+  }
+}

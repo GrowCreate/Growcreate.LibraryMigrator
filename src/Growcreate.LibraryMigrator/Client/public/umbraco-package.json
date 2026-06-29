@@ -1,0 +1,12 @@
+{
+  "name": "Growcreate.LibraryMigrator",
+  "version": "1.0.0",
+  "extensions": [
+    {
+      "type": "backofficeEntryPoint",
+      "alias": "Growcreate.LibraryMigrator.EntryPoint",
+      "name": "Growcreate Library Migrator Entry Point",
+      "js": "/App_Plugins/Growcreate.LibraryMigrator/element-migrator.js"
+    }
+  ]
+}

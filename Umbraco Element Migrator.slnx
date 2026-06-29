@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Growcreate.LibraryMigrator/Growcreate.LibraryMigrator.csproj" />
+  <Project Path="src/Umbraco test project/Umbraco test project.csproj" />
+</Solution>
