@@ -86,7 +86,7 @@ The tab shows current status on load:
 ### Prerequisites
 
 - .NET 10 SDK
-- Node.js 18+
+- Node.js 24 LTS recommended (latest LTS; Node 20.19+ minimum)
 
 ### Building from source
 
