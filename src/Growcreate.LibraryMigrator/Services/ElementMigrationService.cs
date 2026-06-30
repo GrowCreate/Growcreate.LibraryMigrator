@@ -205,7 +205,9 @@ public class ElementMigrationService : IElementMigrationService
 
             long outsideCount = siteWideTotal - directCount;
             if (outsideCount > 0)
-                warnings.Add($"Type '{childType.Alias}' has {outsideCount} instance(s) outside this container. All site-wide instances will be migrated to the Library.");
+                warnings.Add($"Type '{childType.Alias}' has {outsideCount} instance(s) outside this container. " +
+                    $"Only the {directCount} child document(s) under this container will be migrated to the Library. " +
+                    "The type is still converted to an element, so the remaining instances become element-type documents and should be reviewed.");
         }
 
         if (allPickerUsages.Count > 0)
@@ -213,7 +215,7 @@ public class ElementMigrationService : IElementMigrationService
                 "Picker data types that reference migrated content will be converted to Element Picker. " +
                 "This switches ALL properties using those data types site-wide, including any not listed here.");
 
-        List<string> blockers = FindDescendantBlockers(GatherSiteWideDocs(childTypes));
+        List<string> blockers = FindDescendantBlockers(children);
 
         return new PreviewReportModel
         {
@@ -268,7 +270,8 @@ public class ElementMigrationService : IElementMigrationService
         if (childTypes.Count == 0)
             return MigrationResultModel.Fail("Could not resolve child content types.");
 
-        var allDocsToMigrate = GatherSiteWideDocs(childTypes);
+        // Migrate only the container's direct children — not every site-wide instance of these types.
+        List<IContent> allDocsToMigrate = directChildren;
 
         List<string> blockers = FindDescendantBlockers(allDocsToMigrate);
         if (blockers.Count > 0)
@@ -374,7 +377,10 @@ public class ElementMigrationService : IElementMigrationService
         var detectDomains = BuildContentDomains();
         HashSet<Guid> affectedDataTypeKeys = CollectAffectedPickerDataTypes(keyMap, detectDomains);
         affectedDataTypeKeys.UnionWith(CollectAffectedBlockPickerDataTypes(keyMap, detectDomains));
+
         var dtRemap = new Dictionary<Guid, Guid>();
+        JournalCheckpoint convertCheckpoint = CheckpointJournal(journal);
+        int errorsBeforeConvert = errors.Count;
         await RunScopeAsync(async () =>
         {
             (List<string> convertErrors, Dictionary<Guid, Guid> remap) =
@@ -383,6 +389,16 @@ public class ElementMigrationService : IElementMigrationService
             dtRemap = remap;
         }, swallowAndReport: errors);
 
+        // If the conversion phase reported errors it was rolled back: discard its journal entries
+        // and the remap so the value-rewrite phase does not reference uncommitted data types.
+        if (errors.Count > errorsBeforeConvert)
+        {
+            RollbackJournalTo(journal, convertCheckpoint);
+            dtRemap = new Dictionary<Guid, Guid>();
+        }
+
+        JournalCheckpoint remapCheckpoint = CheckpointJournal(journal);
+        int errorsBeforeRemap = errors.Count;
         await RunScopeAsync(async () =>
         {
             // Rebuild domains so content types reflect the committed editor conversion.
@@ -398,6 +414,10 @@ public class ElementMigrationService : IElementMigrationService
 
             errors.AddRange(RewriteHistoricalPickerValues(keyMap, freshTypes, newDataTypeKeys, journal));
         }, swallowAndReport: errors);
+
+        // Same contract for the value-rewrite phase: rolled back on error, so its journal entries go too.
+        if (errors.Count > errorsBeforeRemap)
+            RollbackJournalTo(journal, remapCheckpoint);
 
         _keyValueService.SetValue(ReverseKey(containerKey), JsonSerializer.Serialize(journal));
 
@@ -418,11 +438,19 @@ public class ElementMigrationService : IElementMigrationService
     {
         ICoreScope scope = _scopeProvider.CreateCoreScope();
         MigrationResultModel? failure = null;
+        int errorsBefore = swallowAndReport?.Count ?? 0;
 
         try
         {
             await action();
-            scope.Complete();
+
+            // Best-effort phases record soft errors into swallowAndReport instead of throwing.
+            // If any were recorded, do NOT complete the scope — roll the whole phase back rather
+            // than committing partial state. Callers trim the reverse journal to match so a later
+            // restore never tries to revert changes that were rolled back here.
+            bool softFailed = swallowAndReport is not null && swallowAndReport.Count > errorsBefore;
+            if (!softFailed)
+                scope.Complete();
         }
         catch (Exception ex)
         {
@@ -474,14 +502,6 @@ public class ElementMigrationService : IElementMigrationService
         }
         while (result.Count < total);
         return result;
-    }
-
-    private List<IContent> GatherSiteWideDocs(IEnumerable<IContentType> childTypes)
-    {
-        var all = new List<IContent>();
-        foreach (IContentType ct in childTypes)
-            all.AddRange(GetAllContentOfType(ct.Id));
-        return all;
     }
 
     private IReadOnlyList<IMedia> GetAllMediaOfType(int mediaTypeId)
@@ -1913,6 +1933,29 @@ public class ElementMigrationService : IElementMigrationService
     private sealed record PersistedMigrationResult(int ElementsCreated, List<string> Errors);
 
     // --- Reverse journal: everything restore needs to undo the forward transforms ---
+
+    // A point-in-time size of every journal list. Lets a rolled-back phase discard exactly the
+    // entries it added (RollbackJournalTo) so the persisted journal matches what actually committed.
+    private readonly record struct JournalCheckpoint(
+        int Conversions, int Created, int Values, int Historical, int Folders);
+
+    private static JournalCheckpoint CheckpointJournal(ReverseJournal j) =>
+        new(j.DataTypeConversions.Count, j.CreatedDataTypeKeys.Count,
+            j.PropertyValues.Count, j.HistoricalRows.Count, j.FolderKeys.Count);
+
+    private static void RollbackJournalTo(ReverseJournal j, JournalCheckpoint cp)
+    {
+        TrimList(j.DataTypeConversions, cp.Conversions);
+        TrimList(j.CreatedDataTypeKeys, cp.Created);
+        TrimList(j.PropertyValues, cp.Values);
+        TrimList(j.HistoricalRows, cp.Historical);
+        TrimList(j.FolderKeys, cp.Folders);
+    }
+
+    private static void TrimList<T>(List<T> list, int count)
+    {
+        if (list.Count > count) list.RemoveRange(count, list.Count - count);
+    }
 
     private sealed class ReverseJournal
     {

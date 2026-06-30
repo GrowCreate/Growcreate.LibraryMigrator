@@ -40,9 +40,10 @@ public class MigrationController : ManagementApiControllerBase
 
     [HttpGet("preview/{documentKey:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Preview(Guid documentKey)
     {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
         var report = await _migrationService.PreviewAsync(documentKey);
         return Ok(report);
     }
@@ -63,8 +64,10 @@ public class MigrationController : ManagementApiControllerBase
 
     [HttpGet("status/{documentKey:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Status(Guid documentKey)
     {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
         var status = await _migrationService.StatusAsync(documentKey);
         return Ok(status);
     }
