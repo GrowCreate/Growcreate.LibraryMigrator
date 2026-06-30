@@ -64,8 +64,28 @@
     <Content Update="umbraco-package-schema.json" Pack="false" />
   </ItemGroup>
 
+  <!-- Build the TypeScript/Lit client into wwwroot before static web assets are resolved.
+       Runs on a clean checkout (CI included) so the package never ships stale or missing
+       client code. Incremental: skipped when outputs are newer than all client sources.
+       Set -p:SkipClientBuild=true to bypass (e.g. a .NET-only build where assets exist). -->
+  <PropertyGroup>
+    <ClientDir>$(MSBuildProjectDirectory)\Client</ClientDir>
+    <ClientOutput>$(MSBuildProjectDirectory)\wwwroot\App_Plugins\Growcreate.LibraryMigrator\element-migrator.js</ClientOutput>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Folder Include="wwwroot\App_Plugins\Growcreate.LibraryMigrator\" />
+    <ClientSource Include="Client\src\**\*;Client\public\**\*;Client\package.json;Client\package-lock.json;Client\tsconfig.json;Client\vite.config.ts" />
   </ItemGroup>
+
+  <Target Name="BuildClientAssets"
+          BeforeTargets="ResolveProjectStaticWebAssets;AssignTargetPaths;BeforeBuild"
+          Condition="'$(SkipClientBuild)' != 'true'"
+          Inputs="@(ClientSource)"
+          Outputs="$(ClientOutput)">
+    <Message Importance="high" Text="Building Library Migrator client assets…" />
+    <Exec Command="npm ci" WorkingDirectory="$(ClientDir)" Condition="Exists('$(ClientDir)\package-lock.json')" />
+    <Exec Command="npm install" WorkingDirectory="$(ClientDir)" Condition="!Exists('$(ClientDir)\package-lock.json')" />
+    <Exec Command="npm run build" WorkingDirectory="$(ClientDir)" />
+  </Target>
 
 </Project>

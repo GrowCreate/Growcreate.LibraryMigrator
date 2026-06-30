@@ -86,22 +86,26 @@ The tab shows current status on load:
 ### Prerequisites
 
 - .NET 10 SDK
-- Node.js 24 LTS recommended (latest LTS; Node 20.19+ minimum)
+- Node.js 20.19+ minimum; Node 24 LTS is the dev target (pinned in [`.nvmrc`](src/Growcreate.LibraryMigrator/Client/.nvmrc))
 
 ### Building from source
 
-Build the client assets first:
+The client assets build automatically as part of the .NET build — the `BuildClientAssets`
+MSBuild target runs `npm ci` (or `npm install`) and `npm run build` before static web assets
+are resolved, so a clean checkout produces a complete package:
+
+```bash
+dotnet build
+```
+
+Node.js must be on `PATH`. To skip the client build (e.g. a .NET-only build where the
+assets already exist), pass `-p:SkipClientBuild=true`. You can also build the client
+manually:
 
 ```bash
 cd src/Growcreate.LibraryMigrator/Client
 npm install
 npm run build
-```
-
-Then build the .NET project:
-
-```bash
-dotnet build
 ```
 
 ### Watching for client changes

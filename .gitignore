@@ -480,3 +480,6 @@ umbraco-package-schema.json
 
 # Media files
 **/wwwroot/media/
+
+# Generated client build output (rebuilt by the BuildClientAssets MSBuild target)
+src/Growcreate.LibraryMigrator/wwwroot/App_Plugins/
