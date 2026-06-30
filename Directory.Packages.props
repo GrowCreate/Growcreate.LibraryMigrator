@@ -3,8 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Umbraco.Cms" Version="18.0.0" />
-    <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="18.0.0" />
+    <!-- Range floors at 18.0.0 and excludes 19.0.0+: this package uses APIs (raw umbracoPropertyData
+         SQL, IElementEditingService, Umbraco.ElementPicker aliases) that can break across a major. -->
+    <PackageVersion Include="Umbraco.Cms" Version="[18.0.0,19.0.0)" />
+    <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="[18.0.0,19.0.0)" />
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
   </ItemGroup>
 </Project>
