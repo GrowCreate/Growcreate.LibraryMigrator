@@ -86,6 +86,64 @@ public class MigrationController : ManagementApiControllerBase
         return Ok(result);
     }
 
+    [HttpGet("types")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Types()
+    {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
+        var types = await _migrationService.GetEligibleTypesAsync();
+        return Ok(types);
+    }
+
+    [HttpGet("types/{typeKey:guid}/preview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> PreviewType(Guid typeKey)
+    {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
+        var report = await _migrationService.PreviewTypeAsync(typeKey);
+        return Ok(report);
+    }
+
+    [HttpPost("types/{typeKey:guid}/migrate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> MigrateType(Guid typeKey)
+    {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
+
+        Guid? userKey = _backOfficeSecurityAccessor.BackOfficeSecurity?.CurrentUser?.Key;
+        if (userKey is null) return Unauthorized();
+
+        var result = await _migrationService.MigrateTypeAsync(typeKey, userKey.Value);
+        return Ok(result);
+    }
+
+    [HttpGet("types/{typeKey:guid}/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> StatusType(Guid typeKey)
+    {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
+        var status = await _migrationService.StatusAsync(typeKey);
+        return Ok(status);
+    }
+
+    [HttpPost("types/{typeKey:guid}/restore")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RestoreType(Guid typeKey)
+    {
+        if (!CurrentUserIsAdmin()) return Unauthorized();
+
+        Guid? userKey = _backOfficeSecurityAccessor.BackOfficeSecurity?.CurrentUser?.Key;
+        if (userKey is null) return Unauthorized();
+
+        var result = await _migrationService.RestoreAsync(typeKey, userKey.Value);
+        return Ok(result);
+    }
+
     private bool CurrentUserIsAdmin()
     {
         var user = _backOfficeSecurityAccessor.BackOfficeSecurity?.CurrentUser;
