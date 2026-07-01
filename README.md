@@ -4,13 +4,19 @@ A backoffice package for Umbraco 18 that migrates content saved as Element Types
 
 ## Features
 
-- Workspace view tab on configured document types for in-context migration
+Two entry points into the same migration engine:
+
+- **Per-container workspace tab** — a Library Migration tab on configured document types for in-context migration of a container's direct children
+- **Global doc-type dashboard** — a Library Migration dashboard in the **Content** section that lists every eligible document type and migrates *all* of its documents site-wide, wherever they live in the content tree (no container configuration required)
+
+Shared capabilities:
+
 - Preview report showing exactly what will change before committing
-- Migrates the container document's **direct child documents** to Library elements
+- Migrates documents to Library elements (a container's **direct children**, or every instance of a chosen type)
 - Rewrites references to the migrated content across content, media and member properties — including nested blocks and Rich Text Editor blocks
 - Historical version rewriting so published and draft history reflects the new Library element keys
 - Snapshot and restore — roll back a migration to the original element data
-- Migration status check per document
+- Migration status check per container document or per document type
 - Admin-only access enforced at both the API and UI layers (every endpoint requires an administrator)
 - Auto-discovered via `IComposer` — no manual registration in the host project required
 
@@ -48,15 +54,17 @@ The package registers the settings automatically. No code changes are required i
 
 ## Usage
 
-### Running a migration
+The package exposes two ways to run a migration. Both use the same engine, previews,
+reference rewriting and restore — they differ only in how the set of documents is chosen.
+Both the UI and every API endpoint are administrator-only — non-admin users never see them.
+
+### Running a per-container migration (workspace tab)
 
 1. In the Umbraco backoffice, navigate to the **Content** section
 2. Open a document whose document type is in `ContainerDocTypeAliases`
 3. Click the **Library Migration** tab in the workspace view
 4. Review the **Preview** report — it lists the child documents that will become Library elements, plus every picker/block property whose references will be rewritten
 5. Click **Migrate** to run the migration
-
-The tab and every API endpoint are administrator-only — non-admin users never see the tab.
 
 > **Scope:** only the container document's **direct children** are migrated to Library elements.
 > Element-ness is a content-type setting, so the child document types are flipped to elements
@@ -65,19 +73,39 @@ The tab and every API endpoint are administrator-only — non-admin users never 
 > migrated content (pickers, blocks, RTE blocks, and historical versions) are rewritten
 > site-wide across content, media and member properties.
 
+### Migrating a whole document type (global dashboard)
+
+For a content-wide migration that is not tied to a container, use the dashboard:
+
+1. In the Umbraco backoffice, navigate to the **Content** section
+2. Open the **Library Migration** dashboard (listed after the built-in Content dashboards)
+3. Pick a document type from the list of **eligible types**
+4. Review the **Preview** report for that type — its site-wide instance count plus every picker/block property whose references will be rewritten
+5. Click **Migrate** to convert **every** document of that type into Library elements, wherever it lives in the content tree. Migrated elements are grouped into Library folders named after each document's original parent
+
+> **Eligible types** are document types that have at least one document in the content tree
+> and have **no template** (page-less content types — the natural Library candidates). Types
+> already converted to elements are excluded.
+>
+> **Blockers:** if *any* document of the selected type has child nodes, the whole run is
+> refused (migrating to a Library element would discard the subtree). Move or remove those
+> children first. The blocking documents are listed in the Preview report.
+
+No `appsettings.json` configuration is required for the dashboard — `ContainerDocTypeAliases`
+only governs the per-container workspace tab.
+
 ### Restoring a migration
 
-If a migration needs to be undone:
+If a migration needs to be undone, return to wherever you started it:
 
-1. Open the same document in the backoffice
-2. Go to the **Library Migration** tab
-3. Click **Restore** to revert all properties to their original element type data
+1. For a per-container migration, open the same document and go to the **Library Migration** tab; for a doc-type migration, open the **Library Migration** dashboard and select the same type
+2. Click **Restore** to revert all properties to their original document data
 
 A snapshot is stored automatically during migration and is required for restore to be available.
 
 ### Checking migration status
 
-The tab shows current status on load:
+The tab (per container) and the dashboard (per selected type) show current status on load:
 
 - **Not migrated** — no migration has run for this document
 - **Migrated** — migration completed cleanly; restore is available

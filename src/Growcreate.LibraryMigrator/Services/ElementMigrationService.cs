@@ -279,6 +279,17 @@ public class ElementMigrationService : IElementMigrationService
                 $"Migration refused: {blockers.Count} document(s) have child nodes and cannot be migrated " +
                 $"without data loss. Move or remove their children first. Offending nodes: {string.Join("; ", blockers)}");
 
+        return await MigrateDocsCoreAsync(containerKey, allDocsToMigrate, childTypes, performingUserKey);
+    }
+
+    // Scope-agnostic migration core. The scope key namespaces the persisted snapshot / key map /
+    // reverse journal / result, so both container-scoped and doc-type-scoped migrations share it.
+    private async Task<MigrationResultModel> MigrateDocsCoreAsync(
+        Guid scopeKey,
+        IReadOnlyList<IContent> allDocsToMigrate,
+        IReadOnlyList<IContentType> childTypes,
+        Guid performingUserKey)
+    {
         Dictionary<Guid, Guid> docParentKeys = allDocsToMigrate.ToDictionary(
             doc => doc.Key,
             doc =>
@@ -295,7 +306,7 @@ public class ElementMigrationService : IElementMigrationService
         MigrationResultModel? earlyFailure = await RunScopeAsync(async () =>
         {
             _keyValueService.SetValue(
-                $"Growcreate.LibraryMigrator.Snapshot.{containerKey}",
+                $"Growcreate.LibraryMigrator.Snapshot.{scopeKey}",
                 BuildSnapshotJson(allDocsToMigrate, docParentKeys));
 
             foreach (IContent doc in allDocsToMigrate)
@@ -359,12 +370,12 @@ public class ElementMigrationService : IElementMigrationService
                 throw new InvalidOperationException(string.Join("; ", errors));
 
             _keyValueService.SetValue(
-                $"Growcreate.LibraryMigrator.KeyMap.{containerKey}",
+                $"Growcreate.LibraryMigrator.KeyMap.{scopeKey}",
                 System.Text.Json.JsonSerializer.Serialize(keyMap));
 
             await _auditService.AddAsync(
                 AuditType.Custom, performingUserKey, -1, "element-migration",
-                $"Migrated {successCount} document(s) to Library elements from container {containerKey}",
+                $"Migrated {successCount} document(s) to Library elements for scope {scopeKey}",
                 string.Empty);
         });
 
@@ -419,10 +430,10 @@ public class ElementMigrationService : IElementMigrationService
         if (errors.Count > errorsBeforeRemap)
             RollbackJournalTo(journal, remapCheckpoint);
 
-        _keyValueService.SetValue(ReverseKey(containerKey), JsonSerializer.Serialize(journal));
+        _keyValueService.SetValue(ReverseKey(scopeKey), JsonSerializer.Serialize(journal));
 
         _keyValueService.SetValue(
-            ResultKey(containerKey),
+            ResultKey(scopeKey),
             JsonSerializer.Serialize(new PersistedMigrationResult(successCount, errors)));
 
         return new MigrationResultModel
@@ -432,6 +443,125 @@ public class ElementMigrationService : IElementMigrationService
             LibraryFolderKeys = [.. parentFolderKeys.Values],
             Errors = errors,
         };
+    }
+
+    public Task<IReadOnlyList<EligibleTypeModel>> GetEligibleTypesAsync()
+    {
+        var results = new List<EligibleTypeModel>();
+
+        foreach (IContentType type in _contentTypeService.GetAll())
+        {
+            if (type.IsElement) continue;
+
+            // Eligible = page-less: no default template and no allowed templates.
+            bool hasTemplate = type.DefaultTemplateId is > 0
+                || (type.AllowedTemplates?.Any() ?? false);
+            if (hasTemplate) continue;
+
+            _contentService.GetPagedOfType(type.Id, 0, 1, out long total, filter: null!);
+            if (total == 0) continue;
+
+            results.Add(new EligibleTypeModel
+            {
+                TypeKey = type.Key,
+                TypeAlias = type.Alias,
+                TypeName = type.Name ?? type.Alias,
+                DocumentCountSitewide = (int)total,
+            });
+        }
+
+        return Task.FromResult<IReadOnlyList<EligibleTypeModel>>(results);
+    }
+
+    public async Task<PreviewReportModel> PreviewTypeAsync(Guid typeKey)
+    {
+        IContentType? contentType = _contentTypeService.Get(typeKey);
+        if (contentType is null)
+            return new PreviewReportModel { Migratable = false, ContainerKey = typeKey };
+
+        var docs = GetAllContentOfType(contentType.Id).ToList();
+
+        Dictionary<int, IContentType> allContentTypes = _contentTypeService.GetAll().ToDictionary(ct => ct.Id);
+        List<IMediaType> mediaTypes = _mediaTypeService.GetAll().ToList();
+        List<IMemberType> memberTypes = _memberTypeService.GetAll().ToList();
+
+        // Picker data type names span documents, media and members (a data type may be shared).
+        var pickerProps = allContentTypes.Values.Cast<IContentTypeComposition>()
+            .Concat(mediaTypes)
+            .Concat(memberTypes)
+            .SelectMany(ct => ct.CompositionPropertyTypes)
+            .Where(p => PickerEditorAliases.Contains(p.PropertyEditorAlias))
+            .ToList();
+        var dataTypeKeys = pickerProps.Select(p => p.DataTypeKey).Distinct().ToArray();
+        IEnumerable<IDataType> dataTypes = await _dataTypeService.GetAllAsync(dataTypeKeys);
+        Dictionary<Guid, string> dtNames = dataTypes.ToDictionary(dt => dt.Key, dt => dt.Name ?? string.Empty);
+
+        List<PickerPropertyUsage> allPickerUsages = BuildPickerUsages(allContentTypes.Values, dtNames);
+        List<PickerPropertyUsage> allBlockEditorUsages = BuildBlockEditorUsages(allContentTypes.Values);
+        List<PickerPropertyUsage> mediaPickerUsages = BuildPickerUsages(mediaTypes, dtNames);
+        List<PickerPropertyUsage> mediaBlockEditorUsages = BuildBlockEditorUsages(mediaTypes);
+        List<PickerPropertyUsage> memberPickerUsages = BuildPickerUsages(memberTypes, dtNames);
+        List<PickerPropertyUsage> memberBlockEditorUsages = BuildBlockEditorUsages(memberTypes);
+
+        var warnings = new List<string>();
+        bool allowedInLibrary = contentType is ContentType c && c.AllowedInLibrary;
+
+        var typeReports = new List<MigratableTypeReport>
+        {
+            new MigratableTypeReport
+            {
+                TypeAlias = contentType.Alias,
+                TypeName = contentType.Name ?? contentType.Alias,
+                TypeKey = contentType.Key,
+                IsAlreadyElement = contentType.IsElement,
+                IsAlreadyAllowedInLibrary = allowedInLibrary,
+                DocumentCountSitewide = docs.Count,
+                DirectChildCount = docs.Count,
+            },
+        };
+
+        if (contentType.VariesByCulture())
+            warnings.Add($"Type '{contentType.Alias}' has culture variation — variant data will be preserved during migration.");
+
+        if (allPickerUsages.Count > 0)
+            warnings.Add(
+                "Picker data types that reference migrated content will be converted to Element Picker. " +
+                "This switches ALL properties using those data types site-wide, including any not listed here.");
+
+        List<string> blockers = FindDescendantBlockers(docs);
+
+        return new PreviewReportModel
+        {
+            ContainerName = contentType.Name ?? contentType.Alias,
+            ContainerKey = typeKey,
+            Migratable = docs.Count > 0 && blockers.Count == 0,
+            Types = typeReports,
+            AffectedPickers = allPickerUsages,
+            AffectedBlockEditors = allBlockEditorUsages,
+            AffectedMediaPickers = mediaPickerUsages,
+            AffectedMediaBlockEditors = mediaBlockEditorUsages,
+            AffectedMemberPickers = memberPickerUsages,
+            AffectedMemberBlockEditors = memberBlockEditorUsages,
+            Warnings = warnings,
+            Blockers = blockers,
+        };
+    }
+
+    public async Task<MigrationResultModel> MigrateTypeAsync(Guid typeKey, Guid performingUserKey)
+    {
+        IContentType? contentType = _contentTypeService.Get(typeKey);
+        if (contentType is null) return MigrationResultModel.Fail("Document type not found.");
+
+        var docs = GetAllContentOfType(contentType.Id).ToList();
+        if (docs.Count == 0) return MigrationResultModel.Fail("No documents of this type to migrate.");
+
+        List<string> blockers = FindDescendantBlockers(docs);
+        if (blockers.Count > 0)
+            return MigrationResultModel.Fail(
+                $"Migration refused: {blockers.Count} document(s) of this type have child nodes and cannot be migrated " +
+                $"without data loss. Move or remove their children first. Offending nodes: {string.Join("; ", blockers)}");
+
+        return await MigrateDocsCoreAsync(typeKey, docs, new List<IContentType> { contentType }, performingUserKey);
     }
 
     private async Task<MigrationResultModel?> RunScopeAsync(Func<Task> action, List<string>? swallowAndReport = null)

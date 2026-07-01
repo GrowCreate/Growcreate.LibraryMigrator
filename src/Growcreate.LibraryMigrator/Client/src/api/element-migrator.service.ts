@@ -38,6 +38,13 @@ export interface PreviewReport {
   blockers: string[];
 }
 
+export interface EligibleType {
+  typeKey: string;
+  typeAlias: string;
+  typeName: string;
+  documentCountSitewide: number;
+}
+
 export interface MigrationResult {
   success: boolean;
   elementsCreated: number;
@@ -128,5 +135,25 @@ export class ElementMigratorService extends UmbControllerBase {
 
   restore(documentKey: string): Promise<MigrationResult> {
     return this.#post<MigrationResult>(`/restore/${documentKey}`);
+  }
+
+  listEligibleTypes(): Promise<EligibleType[]> {
+    return this.#get<EligibleType[]>(`/types`);
+  }
+
+  previewType(typeKey: string): Promise<PreviewReport> {
+    return this.#get<PreviewReport>(`/types/${typeKey}/preview`);
+  }
+
+  migrateType(typeKey: string): Promise<MigrationResult> {
+    return this.#post<MigrationResult>(`/types/${typeKey}/migrate`);
+  }
+
+  statusType(typeKey: string): Promise<MigrationStatus> {
+    return this.#get<MigrationStatus>(`/types/${typeKey}/status`);
+  }
+
+  restoreType(typeKey: string): Promise<MigrationResult> {
+    return this.#post<MigrationResult>(`/types/${typeKey}/restore`);
   }
 }
