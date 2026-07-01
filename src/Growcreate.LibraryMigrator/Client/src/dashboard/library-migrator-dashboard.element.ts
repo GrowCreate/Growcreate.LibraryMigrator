@@ -531,3 +531,5 @@ declare global {
     'library-migrator-dashboard': LibraryMigratorDashboardElement;
   }
 }
+
+export default LibraryMigratorDashboardElement;
