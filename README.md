@@ -50,13 +50,31 @@ The package registers the settings automatically. No code changes are required i
 
 ### Running a migration
 
+There are two entry points:
+
+**Per-container (existing)**
+
 1. In the Umbraco backoffice, navigate to the **Content** section
 2. Open a document whose document type is in `ContainerDocTypeAliases`
 3. Click the **Library Migration** tab in the workspace view
 4. Review the **Preview** report — it lists the child documents that will become Library elements, plus every picker/block property whose references will be rewritten
 5. Click **Migrate** to run the migration
 
-The tab and every API endpoint are administrator-only — non-admin users never see the tab.
+**Global (new)**
+
+1. Open the **Content** section
+2. Open the **Library Migration** dashboard tab
+3. Pick any eligible document type from the list (see below), then **Analyse** to load the preview report
+4. Review the impact, then **Run Migration** to convert every instance of that type site-wide into Library elements
+5. Past global runs appear in the *Past global migration runs* panel with a per-run **Restore** button
+
+The tab and every API endpoint are administrator-only — non-admin users never see either entry point.
+
+> **Global eligibility rule:** a document type is listed on the global dashboard only if it has
+> **no template assigned** and at least one instance in the content tree.
+>
+> **Global grouping:** instances migrated by the global flow are grouped in the Library by their
+> immediate parent — one Library folder per parent, mirroring the per-container flow.
 
 > **Scope:** only the container document's **direct children** are migrated to Library elements.
 > Element-ness is a content-type setting, so the child document types are flipped to elements

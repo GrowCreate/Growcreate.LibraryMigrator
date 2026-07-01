@@ -12,5 +12,6 @@ public class LibraryMigratorComposer : IComposer
         builder.Services.Configure<LibraryMigratorSettings>(
             builder.Config.GetSection("Growcreate.LibraryMigrator"));
         builder.Services.AddTransient<IElementMigrationService, ElementMigrationService>();
+        builder.Services.AddTransient<IGlobalMigrationService, ElementMigrationService>();
     }
 }

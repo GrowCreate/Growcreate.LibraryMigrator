@@ -16,7 +16,7 @@ using Umbraco.Cms.Core.Services.Navigation;
 
 namespace Growcreate.LibraryMigrator.Services;
 
-public class ElementMigrationService : IElementMigrationService
+public partial class ElementMigrationService : IElementMigrationService, IGlobalMigrationService
 {
     private static readonly HashSet<string> PickerEditorAliases =
         ["Umbraco.ContentPicker", "Umbraco.MultiNodeTreePicker"];

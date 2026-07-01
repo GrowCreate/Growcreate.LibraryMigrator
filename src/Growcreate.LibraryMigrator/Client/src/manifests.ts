@@ -1,11 +1,19 @@
 import type { ManifestWorkspaceView } from '@umbraco-cms/backoffice/extension-registry';
 import { ContainerTypeCondition } from './conditions/container-type-condition.js';
+import { AdminCondition } from './conditions/admin-condition.js';
 
 const containerTypeCondition = {
   type: 'condition',
   alias: 'Growcreate.LibraryMigrator.Condition.ContainerType',
   name: 'Growcreate Library Migrator Container Type Condition',
   api: ContainerTypeCondition,
+};
+
+const adminCondition = {
+  type: 'condition',
+  alias: 'Growcreate.LibraryMigrator.Condition.Admin',
+  name: 'Growcreate Library Migrator Admin Condition',
+  api: AdminCondition,
 };
 
 const workspaceView: ManifestWorkspaceView = {
@@ -25,4 +33,25 @@ const workspaceView: ManifestWorkspaceView = {
   ],
 };
 
-export const manifests = [containerTypeCondition, workspaceView];
+const globalMigrationDashboard = {
+  type: 'dashboard',
+  alias: 'Growcreate.LibraryMigrator.Dashboard.GlobalMigration',
+  name: 'Growcreate Library Migrator Global Migration Dashboard',
+  element: () => import('./dashboard/global-migration-dashboard.element.js'),
+  weight: 100,
+  meta: {
+    label: 'Library Migration',
+    pathname: 'library-migration',
+  },
+  conditions: [
+    { alias: 'Umb.Condition.SectionAlias', match: 'Umb.Section.Content' },
+    { alias: 'Growcreate.LibraryMigrator.Condition.Admin' },
+  ],
+};
+
+export const manifests = [
+  containerTypeCondition,
+  adminCondition,
+  workspaceView,
+  globalMigrationDashboard,
+];
