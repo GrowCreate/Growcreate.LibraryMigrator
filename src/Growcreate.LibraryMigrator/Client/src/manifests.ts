@@ -38,7 +38,7 @@ const globalMigrationDashboard = {
   alias: 'Growcreate.LibraryMigrator.Dashboard.GlobalMigration',
   name: 'Growcreate Library Migrator Global Migration Dashboard',
   element: () => import('./dashboard/global-migration-dashboard.element.js'),
-  weight: 100,
+  weight: 1000,
   meta: {
     label: 'Library Migration',
     pathname: 'library-migration',

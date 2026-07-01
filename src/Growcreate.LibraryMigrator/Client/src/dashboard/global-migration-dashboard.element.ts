@@ -175,6 +175,9 @@ export class GlobalMigrationDashboardElement extends UmbElementMixin(LitElement)
 
   #renderSelectedView() {
     const type = this._selectedType!;
+    const hasCompletedRun =
+      this._lastRun !== null && this._lastRun.state !== 'NotMigrated';
+
     return html`
       <div class="selection-header">
         <div>
@@ -184,12 +187,14 @@ export class GlobalMigrationDashboardElement extends UmbElementMixin(LitElement)
           ← Back to list
         </uui-button>
       </div>
-      ${this._loadingPreview
-        ? html`<div class="loading"><uui-loader></uui-loader><span>Analysing content…</span></div>`
-        : this._preview
-          ? this.#renderPreview(this._preview)
-          : nothing}
-      ${this._lastRun ? this.#renderRunResult(this._lastRun) : nothing}
+      ${hasCompletedRun
+        ? this.#renderRunResult(this._lastRun!)
+        : this._loadingPreview
+          ? html`<div class="loading"><uui-loader></uui-loader><span>Analysing content…</span></div>`
+          : html`
+              ${this._preview ? this.#renderPreview(this._preview) : nothing}
+              ${this._lastRun ? this.#renderRunResult(this._lastRun) : nothing}
+            `}
     `;
   }
 
